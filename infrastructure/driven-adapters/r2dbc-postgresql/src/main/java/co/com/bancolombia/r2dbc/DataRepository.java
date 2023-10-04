@@ -1,6 +1,7 @@
 package co.com.bancolombia.r2dbc;
 
 import co.com.bancolombia.model.taxonomy.Condition;
+import co.com.bancolombia.model.taxonomy.Filter;
 import co.com.bancolombia.model.taxonomy.QueryTaxonomy;
 import co.com.bancolombia.model.taxonomy.Taxonomy;
 import co.com.bancolombia.model.taxonomy.gateways.TaxonomyRepository;
@@ -10,6 +11,8 @@ import org.springframework.data.relational.core.query.Criteria;
 import org.springframework.data.relational.core.query.Query;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
+
+import java.util.stream.Collectors;
 
 import static org.springframework.data.relational.core.query.Criteria.where;
 
@@ -21,9 +24,21 @@ public class DataRepository implements TaxonomyRepository {
 
     @Override
     public Flux<? extends Taxonomy> find(QueryTaxonomy query) {
+        Criteria criteria = query
+                .getFilters().stream()
+                .collect(Collectors.groupingBy(Filter::getAtribute))
+                .values()
+                .stream()
+                .map(filters -> filters.stream()
+                        .map(filter -> extract(filter.getAtribute(), filter.getValue(), filter.getCondition()))
+                        .reduce(Criteria.empty(), Criteria::or))
+                .reduce(Criteria.empty(), Criteria::and);
+
+        /*
         Criteria criteria = query.getFilters().stream()
                 .map(filter -> extract(filter.getAtribute(), filter.getValue(), filter.getCondition()))
                 .reduce(Criteria.empty(), Criteria::or);
+         */
 
         var type = query.getTaxonomy().getClazz();
 
